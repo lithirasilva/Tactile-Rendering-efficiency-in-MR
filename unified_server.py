@@ -30,11 +30,15 @@ import json as json_module
 try:
     import torch
     import torch.nn as nn
-    from multitask_tactile_network import MultiTaskTactileNet
     PYTORCH_AVAILABLE = True
 except ImportError:
     PYTORCH_AVAILABLE = False
     print("⚠️  PyTorch not available - using simulated predictions")
+    torch = None
+    nn = None
+
+# Defer heavy ML imports to avoid startup hangs
+MultiTaskTactileNet = None
 
 # Import physics engine
 from vibtac_physics_scenarios import VibTacPhysicsGenerator
@@ -83,12 +87,17 @@ TEXTURE_NAMES = [
 
 def load_ml_model():
     """Load PyTorch model if available"""
-    global MODEL, DEVICE
+    global MODEL, DEVICE, MultiTaskTactileNet
     
     if not PYTORCH_AVAILABLE:
         return False
     
     try:
+        # Import here to avoid startup hangs
+        if MultiTaskTactileNet is None:
+            from multitask_tactile_network import MultiTaskTactileNet as MTN
+            MultiTaskTactileNet = MTN
+        
         DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         MODEL = MultiTaskTactileNet(feature_size=42, num_textures=12)
         
